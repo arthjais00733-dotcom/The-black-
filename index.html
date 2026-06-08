@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GHOST PROTOCOL — Vocabulary</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- HUD Structure (As per index_3.html) -->
+  <div class="hud-header">
+    <span class="logo">◈ GHOST PROTOCOL</span>
+    <div class="stat-bar">
+      <span class="stat-item">MASTERED <span class="stat-val" id="mastered-count">0</span></span>
+      <span class="divider">|</span>
+      <span class="stat-item">TOTAL <span class="stat-val" id="total-count">0</span></span>
+    </div>
+  </div>
+
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+
+  <div class="hud-card" id="main-ui">
+    <!-- Screens would go here -->
+  </div>
+
+  <script>
+    // Supabase Init
+    const supabase = supabase.createClient(
+      'https://hbdcavwjbnkyghupsaxo.supabase.co', 
+      'sb_publishable_ozN1P49y3sCErxjH6Ek02Q_cE-ptWDQ'
+    );
+
+    let wordData = [];
+    let mastery = [];
+
+    // Initialize App
+    async function initApp() {
+      // Data Load
+      const { data, error } = await supabase.from('words').select('*');
+      if (error) {
+        console.error("Supabase Error:", error);
+      } else {
+        wordData = data || [];
+        // Load local mastery for now, later we will sync to user_progress
+        mastery = JSON.parse(localStorage.getItem('myMasteryList')) || [];
+        updateStats();
+        console.log("System Ready: Words loaded.");
+      }
+    }
+
+    function updateStats() {
+      const total = wordData.length;
+      document.getElementById('mastered-count').textContent = mastery.length;
+      document.getElementById('total-count').textContent = total;
+      const pct = total > 0 ? (mastery.length / total) * 100 : 0;
+      document.getElementById('progress-fill').style.width = pct + '%';
+    }
+
+    initApp();
+  </script>
+</body>
+</html>
