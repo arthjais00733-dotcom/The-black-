@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GHOST PROTOCOL — Vocabulary</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- HUD Structure -->
+  <div class="hud-header">
+    <span class="logo">◈ GHOST PROTOCOL</span>
+    <div class="stat-bar">
+      <span class="stat-item">MASTERED <span class="stat-val" id="mastered-count">0</span></span>
+      <span class="divider">|</span>
+      <span class="stat-item">TOTAL <span class="stat-val" id="total-count">0</span></span>
+    </div>
+  </div>
+
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+
+  <!-- Screen Alert Box -->
+  <div class="hud-card" id="main-ui" style="padding: 20px; text-align: center; border: 1px solid #ffcc00;">
+    <h3 style='color: yellow;'>System Booting...</h3>
+  </div>
+
+  <script>
+    // Supabase Init (Keys included)
+    const supabaseUrl = 'https://hbdcavwjbnkyghupsaxo.supabase.co';
+    const supabaseKey = 'sb_publishable_ozN1P49y3sCErxjH6Ek02Q_cE-ptWDQ';
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+    let wordData = [];
+    let mastery = [];
+
+    // Initialize App with On-Screen Debugging
+    async function initApp() {
+      const mainUi = document.getElementById('main-ui');
+      mainUi.innerHTML = "<h3 style='color: yellow;'>Fetching Data from Cloud...</h3>";
+
+      try {
+        const { data, error } = await supabase.from('words').select('*');
+        
+        if (error) {
+          // Database error aayega toh red color mein screen par dikhega
+          mainUi.innerHTML = `<h3 style='color: red;'>DATABASE ERROR: <br> ${error.message}</h3>`;
+        } else {
+          wordData = data || [];
+          // Success message green color mein aayega
+          mainUi.innerHTML = `<h3 style='color: #0f0;'>UPLINK SUCCESS!<br>${wordData.length} Words Loaded.</h3>`;
+          
+          mastery = JSON.parse(localStorage.getItem('myMasteryList')) || [];
+          updateStats();
+        }
+      } catch (err) {
+        // Code ya network issue hua toh ye dikhega
+        mainUi.innerHTML = `<h3 style='color: red;'>CRITICAL ERROR: <br> ${err.message}</h3>`;
+      }
+    }
+
+    function updateStats() {
+      const total = wordData.length;
+      document.getElementById('mastered-count').textContent = mastery.length;
+      document.getElementById('total-count').textContent = total;
+      const pct = total > 0 ? (mastery.length / total) * 100 : 0;
+      document.getElementById('progress-fill').style.width = pct + '%';
+    }
+
+    initApp();
+  </script>
+</body>
+</html>
