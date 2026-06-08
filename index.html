@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- HUD Structure (As per index_3.html) -->
+  <!-- HUD Structure -->
   <div class="hud-header">
     <span class="logo">◈ GHOST PROTOCOL</span>
     <div class="stat-bar">
@@ -21,32 +21,42 @@
 
   <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
 
-  <div class="hud-card" id="main-ui">
-    <!-- Screens would go here -->
+  <!-- Screen Alert Box -->
+  <div class="hud-card" id="main-ui" style="padding: 20px; text-align: center; border: 1px solid #ffcc00;">
+    <h3 style='color: yellow;'>System Booting...</h3>
   </div>
 
   <script>
-    // Supabase Init
-    const supabase = supabase.createClient(
-      'https://hbdcavwjbnkyghupsaxo.supabase.co', 
-      'sb_publishable_ozN1P49y3sCErxjH6Ek02Q_cE-ptWDQ'
-    );
+    // Supabase Init (Keys included)
+    const supabaseUrl = 'https://hbdcavwjbnkyghupsaxo.supabase.co';
+    const supabaseKey = 'sb_publishable_ozN1P49y3sCErxjH6Ek02Q_cE-ptWDQ';
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
     let wordData = [];
     let mastery = [];
 
-    // Initialize App
+    // Initialize App with On-Screen Debugging
     async function initApp() {
-      // Data Load
-      const { data, error } = await supabase.from('words').select('*');
-      if (error) {
-        console.error("Supabase Error:", error);
-      } else {
-        wordData = data || [];
-        // Load local mastery for now, later we will sync to user_progress
-        mastery = JSON.parse(localStorage.getItem('myMasteryList')) || [];
-        updateStats();
-        console.log("System Ready: Words loaded.");
+      const mainUi = document.getElementById('main-ui');
+      mainUi.innerHTML = "<h3 style='color: yellow;'>Fetching Data from Cloud...</h3>";
+
+      try {
+        const { data, error } = await supabase.from('words').select('*');
+        
+        if (error) {
+          // Database error aayega toh red color mein screen par dikhega
+          mainUi.innerHTML = `<h3 style='color: red;'>DATABASE ERROR: <br> ${error.message}</h3>`;
+        } else {
+          wordData = data || [];
+          // Success message green color mein aayega
+          mainUi.innerHTML = `<h3 style='color: #0f0;'>UPLINK SUCCESS!<br>${wordData.length} Words Loaded.</h3>`;
+          
+          mastery = JSON.parse(localStorage.getItem('myMasteryList')) || [];
+          updateStats();
+        }
+      } catch (err) {
+        // Code ya network issue hua toh ye dikhega
+        mainUi.innerHTML = `<h3 style='color: red;'>CRITICAL ERROR: <br> ${err.message}</h3>`;
       }
     }
 
