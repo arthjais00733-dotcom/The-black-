@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Black:- Vocabulary builder</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="scanlines"></div>
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <!-- HUD Header -->
+  <div class="hud-header">
+    <span class="logo" onclick="goRoot()">◈ THE BLACK</span>
+    <div class="stat-bar">
+      <span class="stat-item">MASTERED <span class="stat-val" id="mastered-count">0</span></span>
+      <span class="divider">|</span>
+      <span class="stat-item">TOTAL <span class="stat-val" id="total-count">0</span></span>
+      <span class="divider">|</span>
+      <span class="stat-item">LEFT <span class="stat-val" id="left-count">0</span></span>
+    </div>
+  </div>
+
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+
+  <div class="hud-card" id="main-ui">
+
+    <!-- ROOT SCREEN: CATEGORY SELECTION -->
+    <div id="screen-category" class="screen active">
+      <div class="ghost-eye">◈</div>
+      
+      <h1 class="main-title" style="font-size: 2.3rem; margin-bottom: 2px; white-space: nowrap;">
+        THE <span style="color: var(--silver-light);">BLACK</span>
+      </h1>
+      
+      <div style="color: var(--lavender); font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 4px; margin-bottom: 12px; text-shadow: 0 0 10px rgba(180, 150, 255, 0.4);">
+        VOCABULARY BUILDER
+      </div>
+
+      <p class="subtitle" id="db-status" style="font-size: 0.55rem; opacity: 0.7;">ESTABLISHING UPLINK...</p>
+      
+      <div class="menu-grid" style="margin-top: 15px;">
+        <button class="mode-btn" onclick="selectCategory('ows')">
+          <span class="btn-icon">❖</span>
+          <span class="btn-label">ONE WORD SUB.</span>
+          <span class="btn-sub">Phrases to single words</span>
+        </button>
+        <button class="mode-btn practice-btn" onclick="selectCategory('idiom')">
+          <span class="btn-icon">✧</span>
+          <span class="btn-label">IDIOMS & PHRASES</span>
+          <span class="btn-sub">Figurative expressions</span>
+        </button>
+        
+        <!-- MERGED GENERAL VOCAB SECTION -->
+        <button class="mode-btn archive-btn" onclick="selectCategory('vocab')" style="border-color: rgba(180, 150, 255, 0.4);">
+          <span class="btn-icon" style="color: var(--lavender);">⟐</span>
+          <span class="btn-label">GENERAL VOCAB</span>
+          <span class="btn-sub">Essential words with clean meanings</span>
+        </button>
+        
+        <button class="mode-btn" onclick="selectCategory('spelling')" style="border-color: rgba(100,255,200,0.3);">
+          <span class="btn-icon" style="color: #64FFC8;">⎔</span>
+          <span class="btn-label">SPELLING TEST</span>
+          <span class="btn-sub">Check spelling accuracy</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ACTION MENU (LEARN / PRACTICE / ARCHIVE) -->
+    <div id="screen-home" class="screen">
+      <div class="ghost-eye pulse">◈</div>
+      <h2 class="main-title" id="selected-category-title" style="font-size: 1.5rem; color: var(--gold);">CATEGORY</h2>
+      <p class="subtitle">SELECT DIRECTIVE</p>
+      <div class="menu-grid">
+        <button class="mode-btn learn-btn" onclick="setMode('learn')">
+          <span class="btn-icon">▶</span>
+          <span class="btn-label">LEARN</span>
+          <span class="btn-sub">Memorize entries</span>
+        </button>
+        <button class="mode-btn practice-btn" onclick="setMode('practice')">
+          <span class="btn-icon">⬡</span>
+          <span class="btn-label">PRACTICE</span>
+          <span class="btn-sub">Test knowledge</span>
+        </button>
+        <button class="mode-btn archive-btn" onclick="showArchive()">
+          <span class="btn-icon">◈</span>
+          <span class="btn-label">ARCHIVE</span>
+          <span class="btn-sub">Mastered items</span>
+        </button>
+        <button class="home-btn" onclick="goRoot()" style="margin-top: 15px;">⌂ BACK TO CATEGORIES</button>
+      </div>
+    </div>
+
+    <!-- LEARN SCREEN -->
+    <div id="screen-learn" class="screen">
+      <div class="card-counter" id="card-counter">01 / 00</div>
+      <div class="word-card">
+        <div class="word-label">ENTRY</div>
+        <div class="word-text" id="learn-word">—</div>
+        <div class="divider-line"></div>
+        <div class="meaning-label">MEANING / DEFINITION</div>
+        <div class="meaning-text" id="learn-meaning">—</div>
+      </div>
+      <div class="action-row">
+        <button class="ctrl-btn" onclick="nav(-1)" title="Previous">◀</button>
+        <button class="memorized-btn" onclick="markLearned()">✓ MEMORIZED</button>
+        <button class="ctrl-btn" onclick="nav(1)" title="Next">▶</button>
+      </div>
+      <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
+    </div>
+
+    <!-- PRACTICE SCREEN -->
+    <div id="screen-practice" class="screen">
+      <div class="practice-word-box">
+        <div class="word-label">IDENTIFY THIS ENTRY</div>
+        <div class="word-text" id="practice-word">—</div>
+      </div>
+      <div class="options-grid" id="options-grid"></div>
+      <div class="feedback-box" id="feedback-box"></div>
+      <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
+    </div>
+
+    <!-- ARCHIVE SCREEN -->
+    <div id="screen-archive" class="screen">
+      <div class="archive-header">
+        <span class="word-label">MASTERED ARCHIVE</span>
+        <span class="archive-count" id="archive-count">0 items</span>
+      </div>
+      <div class="archive-search-wrap">
+        <input type="text" id="archive-search" class="archive-search" placeholder="SEARCH..." oninput="filterArchive()">
+      </div>
+      <div class="scroll-box" id="archive-list"></div>
+      <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
+    </div>
+
+    <!-- ALL MASTERED SCREEN -->
+    <div id="screen-all-done" class="screen">
+      <div class="ghost-eye pulse">◈</div>
+      <div class="word-text" style="color:#00FFD1; margin:20px 0;">ALL MASTERED</div>
+      <p class="subtitle">Category complete. Try practice mode.</p>
+      <button class="mode-btn practice-btn" onclick="setMode('practice')" style="margin-bottom:10px;">
+        <span class="btn-icon">⬡</span><span class="btn-label">PRACTICE NOW</span>
+      </button>
+      <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
+    </div>
+
+    <!-- EMPTY SCREEN -->
+    <div id="screen-empty" class="screen">
+      <div class="ghost-eye">◈</div>
+      <div class="word-text" style="color:#FF4444; margin:20px 0;">NO DATA</div>
+      <p class="subtitle">Learn entries in this category first.</p>
+      <button class="mode-btn learn-btn" onclick="setMode('learn')" style="margin-bottom:10px;">
+        <span class="btn-icon">▶</span><span class="btn-label">START LEARNING</span>
+      </button>
+      <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
+    </div>
+
+  </div>
+
+  <script>
+    let allDatabaseWords = []; 
+    let wordData = []; 
+    let mastery = JSON.parse(localStorage.getItem('myMasteryList')) || [];
+    let currentCategory = '';
+    let currentIndex = 0;
+    let unlearned = [];
+    let allArchive = [];
+
+    // --- SUPABASE FETCH ---
+    async function initDatabase() {
+      const dbStatus = document.getElementById('db-status');
+      dbStatus.textContent = "ESTABLISHING UPLINK...";
+      dbStatus.style.color = "var(--gold)";
+
+      try {
+        const supabaseUrl = 'https://hbdcavwjbnkyghupsaxo.supabase.co';
+        const supabaseKey = 'sb_publishable_ozN1P49y3sCErxjH6Ek02Q_cE-ptWDQ';
+        const sbClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        const { data, error } = await sbClient.from('words').select('*');
+        if (error) throw error;
+
+        allDatabaseWords = data || [];
+        dbStatus.textContent = "SYSTEM READY";
+        dbStatus.style.color = "var(--muted)";
+        updateStats(); 
+      } catch (err) {
+        dbStatus.textContent = "DATABASE CONNECTION FAILED!";
+        dbStatus.style.color = "#FF4444";
+        console.error(err);
+      }
+    }
+
+    initDatabase();
+
+    // --- NAVIGATION LOGIC ---
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const el = document.getElementById('screen-' + id);
+      if (el) { el.classList.add('active'); el.classList.add('fade-in'); setTimeout(() => el.classList.remove('fade-in'), 400); }
+    }
+
+    function goRoot() { 
+      currentCategory = '';
+      wordData = [];
+      updateStats();
+      showScreen('category'); 
+    }
+
+    // --- UPDATED SMART CATEGORY FILTER ---
+    function selectCategory(category) {
+      currentCategory = category;
+      
+      wordData = allDatabaseWords.filter(w => {
+        if (!w.category) return category === 'ows'; 
+        return w.category.toLowerCase().trim() === category.toLowerCase();
+      });
+      
+      let titleDisplay = category.toUpperCase();
+      if(category === 'ows') titleDisplay = "ONE WORD SUB";
+      if(category === 'vocab') titleDisplay = "GENERAL VOCAB";
+      
+      document.getElementById('selected-category-title').textContent = titleDisplay;
+      
+      updateStats();
+      showScreen('home'); 
+    }
+
+    function updateStats() {
+      const total = wordData.length;
+      const masteredInThisCat = wordData.filter(w => mastery.find(m => m.id === w.id || m.word === w.word)).length;
+      const left = total - masteredInThisCat;
+      
+      document.getElementById('mastered-count').textContent = masteredInThisCat;
+      document.getElementById('total-count').textContent = total;
+      document.getElementById('left-count').textContent = Math.max(0, left);
+      
+      const pct = total > 0 ? (masteredInThisCat / total) * 100 : 0;
+      document.getElementById('progress-fill').style.width = pct + '%';
+    }
+
+    function setMode(mode) {
+      if (mode === 'learn') {
+        unlearned = wordData.filter(w => !mastery.find(m => m.id === w.id || m.word === w.word));
+        unlearned.sort(() => Math.random() - 0.5);
+        currentIndex = 0;
+        if (unlearned.length === 0) { showScreen('all-done'); return; }
+        showScreen('learn');
+        renderLearn();
+      } else {
+        const masteredInThisCat = wordData.filter(w => mastery.find(m => m.id === w.id || m.word === w.word));
+        if (masteredInThisCat.length === 0) { showScreen('empty'); return; }
+        showScreen('practice');
+        renderPractice(masteredInThisCat);
+      }
+    }
+
+    function renderLearn() {
+      const word = unlearned[currentIndex];
+      document.getElementById('learn-word').textContent = word.word;
+      document.getElementById('learn-meaning').textContent = word.meaning;
+      document.getElementById('card-counter').textContent = String(currentIndex + 1).padStart(2, '0') + ' / ' + String(unlearned.length).padStart(2, '0');
+    }
+
+    function nav(dir) {
+      currentIndex = (currentIndex + dir + unlearned.length) % unlearned.length;
+      renderLearn();
+    }
+
+    function markLearned() {
+      const word = unlearned[currentIndex];
+      if (!mastery.find(m => m.id === word.id || m.word === word.word)) mastery.push(word);
+      localStorage.setItem('myMasteryList', JSON.stringify(mastery));
+      unlearned.splice(currentIndex, 1);
+      updateStats();
+      if (unlearned.length === 0) { showScreen('all-done'); return; }
+      currentIndex = Math.min(currentIndex, unlearned.length - 1);
+      renderLearn();
+      const card = document.querySelector('.word-card');
+      card.classList.add('flash-green');
+      setTimeout(() => card.classList.remove('flash-green'), 500);
+    }
+
+    function renderPractice(masteredWords) {
+      const fb = document.getElementById('feedback-box');
+      fb.textContent = ''; fb.className = 'feedback-box';
+
+      const rand = masteredWords[Math.floor(Math.random() * masteredWords.length)];
+      let options = [rand.meaning];
+      const pool = wordData.filter(w => w.meaning !== rand.meaning);
+      pool.sort(() => Math.random() - 0.5);
+      for (let w of pool) {
+        if (options.length >= 4) break;
+        if (!options.includes(w.meaning)) options.push(w.meaning);
+      }
+      options.sort(() => Math.random() - 0.5);
+
+      document.getElementById('practice-word').textContent = rand.word;
+      const grid = document.getElementById('options-grid');
+      grid.innerHTML = '';
+      options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = opt;
+        btn.onclick = () => checkAnswer(btn, opt, rand.meaning, grid, masteredWords);
+        grid.appendChild(btn);
+      });
+    }
+
+    function checkAnswer(btn, selected, correct, grid, masteredWords) {
+      grid.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+      const fb = document.getElementById('feedback-box');
+      if (selected === correct) {
+        btn.classList.add('correct');
+        fb.textContent = '✓ CORRECT — NEURAL LINK CONFIRMED';
+        fb.className = 'feedback-box success';
+        setTimeout(() => renderPractice(masteredWords), 1200);
+      } else {
+        btn.classList.add('wrong');
+        fb.textContent = '✗ INCORRECT — RECALIBRATING...';
+        fb.className = 'feedback-box error';
+        grid.querySelectorAll('.option-btn').forEach(b => { if (b.textContent === correct) b.classList.add('correct'); });
+        setTimeout(() => renderPractice(masteredWords), 1800);
+      }
+    }
+
+    // --- ARCHIVE LOGIC ---
+    function showArchive() {
+      allArchive = wordData.filter(w => mastery.find(m => m.id === w.id || m.word === w.word));
+      document.getElementById('archive-count').textContent = allArchive.length + ' items';
+      document.getElementById('archive-search').value = '';
+      renderArchiveList(allArchive);
+      showScreen('archive');
+    }
+
+    function filterArchive() {
+      const q = document.getElementById('archive-search').value.toLowerCase();
+      const filtered = allArchive.filter(w => w.word.toLowerCase().includes(q) || w.meaning.toLowerCase().includes(q));
+      renderArchiveList(filtered);
+    }
+
+    function renderArchiveList(list) {
+      const box = document.getElementById('archive-list');
+      if (list.length === 0) { box.innerHTML = '<div class="archive-empty">No items found.</div>'; return; }
+      box.innerHTML = list.map((w, i) => {
+        return `<div class="archive-item">
+          <div class="arc-word">${w.word}</div>
+          <div class="arc-meaning">${w.meaning}</div>
+          <button class="remove-btn" onclick="removeFromArchive('${w.id || w.word}')">✕</button>
+        </div>`;
+      }).join('');
+    }
+
+    function removeFromArchive(identifier) {
+      mastery = mastery.filter(m => m.id !== identifier && m.word !== identifier);
+      localStorage.setItem('myMasteryList', JSON.stringify(mastery));
+      updateStats();
+      showArchive();
+    }
+  </script>
+</body>
+</html>
