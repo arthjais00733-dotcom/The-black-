@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Black:- Vocabulary builder</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    /* Full Screen Distribution Fixes */
+    #main-ui {
+      display: flex;
+      flex-direction: column;
+      min-height: 88vh; /* Stretch to fill tall screens */
+    }
+    
+    .screen {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+    }
+    
+    .screen.active {
+      display: flex;
+    }
+
+    /* Distribute spacing evenly for Menu Screens */
+    #screen-category, #screen-home {
+      justify-content: space-around; 
+      padding-top: 20px;
+      padding-bottom: 20px;
+    }
+
+    .menu-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 20px; /* Increased gap for better touch targets and breathing room */
+      margin-top: auto;
+      margin-bottom: auto;
+    }
+
+    /* Learn Screen Spacing Fix */
+    #screen-learn {
+      justify-content: space-between;
+      padding-top: 15px;
+    }
+    
+    .word-card {
+      margin-top: auto;
+      margin-bottom: auto;
+    }
+
+    /* Archive Collapsible Folders */
+    .batch-folder {
+      margin-bottom: 12px;
+    }
+    
+    .batch-header {
+      padding: 16px;
+      background: var(--card-bg); 
+      border: 1px solid var(--grey-border);
+      border-left: 4px solid var(--grey-dark);
+      color: var(--silver-light);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.05rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+    
+    .batch-header:hover {
+      background: var(--card-hover);
+      border-color: var(--grey-medium);
+      border-left-color: var(--silver-light);
+    }
+    
+    .batch-content {
+      display: none;
+      border-left: 2px solid var(--grey-dark);
+      margin-left: 2px;
+      padding: 15px 0 5px 15px;
+    }
+    
+    .batch-content.open {
+      display: block;
+      animation: slideDown 0.3s ease forwards;
+    }
+    
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .batch-stats {
+      color: var(--grey-medium);
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="scanlines"></div>
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <div class="hud-header">
+    <span class="logo" onclick="goRoot()">◈ THE BLACK</span>
+    <div class="stat-bar">
+      <span class="stat-item">MASTERED <span class="stat-val" id="mastered-count">0</span></span>
+      <span class="divider">|</span>
+      <span class="stat-item">TOTAL <span class="stat-val" id="total-count">0</span></span>
+      <span class="divider">|</span>
+      <span class="stat-item">LEFT <span class="stat-val" id="left-count">0</span></span>
+    </div>
+  </div>
+
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+
+  <div class="hud-card" id="main-ui">
+
+    <div id="screen-category" class="screen active">
+      <div>
+        <div class="ghost-eye">◈</div>
+        <h1 class="main-title" style="font-size: 2.3rem; margin-bottom: 2px; white-space: nowrap;">
+          THE <span style="color: var(--grey-medium);">BLACK</span>
+        </h1>
+        <div style="color: var(--grey-medium); font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; letter-spacing: 4px; margin-bottom: 12px; text-align: center; text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);">
+          VOCABULARY BUILDER
+        </div>
+        <p class="subtitle" id="db-status" style="font-size: 0.55rem; opacity: 0.7;">ESTABLISHING UPLINK...</p>
+      </div>
+      
+      <div class="menu-grid">
+        <button class="mode-btn" onclick="selectCategory('ows')">
+          <span class="btn-icon" style="color: var(--silver-light);">❖</span>
+          <span class="btn-label">ONE WORD SUB.</span>
+          <span class="btn-sub">Phrases to single words</span>
+        </button>
+        <button class="mode-btn practice-btn" onclick="selectCategory('idiom')">
+          <span class="btn-icon" style="color: var(--silver-light);">✧</span>
+          <span class="btn-label">IDIOMS & PHRASES</span>
+          <span class="btn-sub">Figurative expressions</span>
+        </button>
+        <button class="mode-btn archive-btn" onclick="selectCategory('vocab')">
+          <span class="btn-icon" style="color: var(--silver-light);">⟐</span>
+          <span class="btn-label">GENERAL VOCAB</span>
+          <span class="btn-sub">Essential words with clean meanings</span>
+        </button>
+        <button class="mode-btn" onclick="selectCategory('spelling')">
+          <span class="btn-icon" style="color: var(--silver-light);">⎔</span>
+          <span class="btn-label">SPELLING TEST</span>
+          <span class="btn-sub">Check spelling accuracy</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="screen-home" class="screen">
+      <div>
+        <div class="ghost-eye pulse">◈</div>
+        <h2 class="main-title" id="selected-category-title" style="font-size: 1.8rem; color: var(--silver-light); letter-spacing: 3px;">CATEGORY</h2>
+        <p class="subtitle">SELECT DIRECTIVE</p>
+      </div>
+      
+      <div class="menu-grid">
+        <button class="mode-btn learn-btn" onclick="setMode('learn')">
+          <span class="btn-icon">▶</span>
+          <span class="btn-label">LEARN</span>
+          <span class="btn-sub">Memorize entries</span>
+        </button>
+        <button class="mode-btn practice-btn" onclick="setMode('practice')">
+          <span class="btn-icon">⬡</span>
+          <span class="btn-label">PRACTICE</span>
+          <span class="btn-sub">Test knowledge</span>
+        </button>
+        <button class="mode-btn archive-btn" onclick="showArchive()">
+          <span class="btn-icon">◈</span>
+          <span class="btn-label">ARCHIVE</span>
+          <span class="btn-sub">Mastered items</span>
+        </button>
+      </div>
+      <button class="home-btn" onclick="goRoot()" style="margin-top: auto;">⌂ BACK TO CATEGORIES</button>
+    </div>
+
+    <div id="screen-learn" class="screen">
+      <div style="text-align: center;">
+        <div class="ghost-eye pulse" style="font-size: 0.8rem; display: inline-block;">◈</div>
+        <div id="learn-category-title" style="color: var(--silver-light); font-family: 'Orbitron', sans-serif; font-size: 1.1rem; letter-spacing: 3px; margin-top: 5px;">CATEGORY</div>
+      </div>
+      
+      <div class="card-counter" id="card-counter" style="margin-top: 10px;">01 / 00</div>
+      
+      <div class="word-card">
+        <div class="word-label">ENTRY</div>
+        <div class="word-text" id="learn-word">—</div>
+        <div class="divider-line"></div>
+        <div class="meaning-label">MEANING / DEFINITION</div>
+        <div class="meaning-text" id="learn-meaning">—</div>
+      </div>
+      
+      <div>
+        <div class="action-row">
+          <button class="ctrl-btn" onclick="nav(-1)" title="Previous">◀</button>
+          <button class="memorized-btn" onclick="markLearned()">✓ MEMORIZED</button>
+          <button class="ctrl-btn" onclick="nav(1)" title="Next">▶</button>
+        </div>
+        <button class="home-btn" onclick="showScreen('home')" style="margin-top: 20px;">⌂ ACTION MENU</button>
+      </div>
+    </div>
+
+    <div id="screen-practice-menu" class="screen">
+      <div>
+        <div class="ghost-eye pulse">◈</div>
+        <h2 class="main-title" style="font-size: 1.5rem; color: var(--silver-light);">SELECT TARGET</h2>
+        <p class="subtitle">CHOOSE NEURAL BATCH FOR REVISION</p>
+      </div>
+      <div class="scroll-box menu-grid" id="practice-batch-list" style="margin-top: 15px; margin-bottom: 15px; max-height: 50vh; overflow-y: auto;">
+        </div>
+      <button class="home-btn" onclick="showScreen('home')" style="margin-top: auto;">⌂ ACTION MENU</button>
+    </div>
+
+    <div id="screen-practice" class="screen">
+      <div class="practice-word-box">
+        <div class="word-label">IDENTIFY THIS ENTRY</div>
+        <div class="word-text" id="practice-word">—</div>
+      </div>
+      <div class="options-grid" id="options-grid" style="margin-top: auto; margin-bottom: auto;"></div>
+      <div class="feedback-box" id="feedback-box"></div>
+      <button class="home-btn" onclick="showScreen('practice-menu')">⌂ BACK TO BATCHES</button>
+    </div>
+
+    <div id="screen-archive" class="screen">
+      <div>
+        <div class="archive-header">
+          <span class="word-label" id="archive-category-title" style="color: var(--silver-light);">MASTERED ARCHIVE</span>
+          <span class="archive-count" id="archive-count">0 items</span>
+        </div>
+        <div class="archive-search-wrap">
+          <input type="text" id="archive-search" class="archive-search" placeholder="SEARCH..." oninput="filterArchive()">
+        </div>
+      </div>
+      
+      <div class="scroll-box" id="archive-list" style="flex: 1; margin-top: 15px;">
+        </div>
+      
+      <button class="home-btn" onclick="showScreen('home')" style="margin-top: 15px;">⌂ ACTION MENU</button>
+    </div>
+
+    <div id="screen-all-done" class="screen">
+      <div style="margin: auto 0;">
+        <div class="ghost-eye pulse">◈</div>
+        <div class="word-text" style="color: var(--success); margin:20px 0; text-align: center;">ALL MASTERED</div>
+        <p class="subtitle">Category complete. Try practice mode.</p>
+        <button class="mode-btn practice-btn" onclick="setMode('practice')" style="margin-bottom:10px; width: 100%;">
+          <span class="btn-icon">⬡</span><span class="btn-label">PRACTICE NOW</span>
+        </button>
+      </div>
+      <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
+    </div>
+
+    <div id="screen-empty" class="screen">
+      <div style="margin: auto 0;">
+        <div class="ghost-eye">◈</div>
+        <div class="word-text" style="color: var(--error); margin:20px 0; text-align: center;">NO DATA</div>
+        <p class="subtitle">Learn entries in this category first.</p>
+        <button class="mode-btn learn-btn" onclick="setMode('learn')" style="margin-bottom:10px; width: 100%;">
+          <span class="btn-icon">▶</span><span class="btn-label">START LEARNING</span>
+        </button>
+      </div>
+      <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
+    </div>
+
+  </div>
+
+  <script>
+    let allDatabaseWords = []; 
+    let wordData = []; 
+    let mastery = JSON.parse(localStorage.getItem('myMasteryList')) || [];
+    let currentCategory = '';
+    let currentIndex = 0;
+    let unlearned = [];
+    let allArchive = [];
+
+    // --- SUPABASE FETCH ---
+    async function initDatabase() {
+      const dbStatus = document.getElementById('db-status');
+      dbStatus.textContent = "ESTABLISHING UPLINK...";
+      dbStatus.style.color = "var(--grey-medium)";
+
+      try {
+        const supabaseUrl = 'https://hbdcavwjbnkyghupsaxo.supabase.co';
+        const supabaseKey = 'sb_publishable_ozN1P49y3sCErxjH6Ek02Q_cE-ptWDQ';
+        const sbClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        const { data, error } = await sbClient.from('words').select('*');
+        if (error) throw error;
+
+        allDatabaseWords = data || [];
+        dbStatus.textContent = "SYSTEM READY";
+        dbStatus.style.color = "rgba(255, 255, 255, 0.4)";
+        updateStats(); 
+      } catch (err) {
+        dbStatus.textContent = "DATABASE CONNECTION FAILED!";
+        dbStatus.style.color = "var(--error)";
+        console.error(err);
+      }
+    }
+
+    initDatabase();
+
+    // --- NAVIGATION LOGIC ---
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const el = document.getElementById('screen-' + id);
+      if (el) { el.classList.add('active'); el.classList.add('fade-in'); setTimeout(() => el.classList.remove('fade-in'), 400); }
+    }
+
+    function goRoot() { 
+      currentCategory = '';
+      wordData = [];
+      updateStats();
+      showScreen('category'); 
+    }
+
+    // --- CATEGORY FILTER ---
+    function selectCategory(category) {
+      currentCategory = category;
+      
+      wordData = allDatabaseWords.filter(w => {
+        if (!w.category) return category === 'ows'; 
+        return w.category.toLowerCase().trim() === category.toLowerCase();
+      });
+      
+      let titleDisplay = category.toUpperCase();
+      if(category === 'ows') titleDisplay = "ONE WORD SUB";
+      if(category === 'vocab') titleDisplay = "GENERAL VOCAB";
+      
+      document.getElementById('selected-category-title').textContent = titleDisplay;
+      
+      updateStats();
+      showScreen('home'); 
+    }
+
+    function updateStats() {
+      const total = wordData.length;
+      const masteredInThisCat = wordData.filter(w => mastery.find(m => m.id === w.id || m.word === w.word)).length;
+      const left = total - masteredInThisCat;
+      
+      document.getElementById('mastered-count').textContent = masteredInThisCat;
+      document.getElementById('total-count').textContent = total;
+      document.getElementById('left-count').textContent = Math.max(0, left);
+      
+      const pct = total > 0 ? (masteredInThisCat / total) * 100 : 0;
+      document.getElementById('progress-fill').style.width = pct + '%';
+    }
+
+    // --- MODE SELECTION ---
+    function setMode(mode) {
+      if (mode === 'learn') {
+        unlearned = wordData.filter(w => !mastery.find(m => m.id === w.id || m.word === w.word));
+        
+        // Fisher-Yates Master Shuffle
+        for (let i = unlearned.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [unlearned[i], unlearned[j]] = [unlearned[j], unlearned[i]];
+        }
+        
+        currentIndex = 0;
+        if (unlearned.length === 0) { showScreen('all-done'); return; }
+        
+        // Inject Dynamic Title for Learn Screen
+        document.getElementById('learn-category-title').textContent = document.getElementById('selected-category-title').textContent;
+        
+        showScreen('learn');
+        renderLearn();
+      } else if (mode === 'practice') {
+        const catMastery = mastery.filter(m => {
+            if (m.category && currentCategory) {
+                return m.category.toLowerCase().trim() === currentCategory.toLowerCase().trim();
+            }
+            return wordData.some(w => w.word === m.word);
+        });
+        
+        if (catMastery.length === 0) { showScreen('empty'); return; }
+        
+        renderPracticeMenu(catMastery);
+        showScreen('practice-menu');
+      }
+    }
+
+    function renderLearn() {
+      const word = unlearned[currentIndex];
+      document.getElementById('learn-word').textContent = word.word;
+      document.getElementById('learn-meaning').textContent = word.meaning;
+      document.getElementById('card-counter').textContent = String(currentIndex + 1).padStart(2, '0') + ' / ' + String(unlearned.length).padStart(2, '0');
+    }
+
+    function nav(dir) {
+      currentIndex = (currentIndex + dir + unlearned.length) % unlearned.length;
+      renderLearn();
+    }
+
+    function markLearned() {
+      const word = unlearned[currentIndex];
+      if (!mastery.find(m => m.id === word.id || m.word === word.word)) mastery.push(word);
+      localStorage.setItem('myMasteryList', JSON.stringify(mastery));
+      unlearned.splice(currentIndex, 1);
+      updateStats();
+      if (unlearned.length === 0) { showScreen('all-done'); return; }
+      currentIndex = Math.min(currentIndex, unlearned.length - 1);
+      renderLearn();
+      const card = document.querySelector('.word-card');
+      card.classList.add('flash-green');
+      setTimeout(() => card.classList.remove('flash-green'), 500);
+    }
+
+    // --- BATCH PRACTICE LOGIC ---
+    let currentPracticePool = [];
+
+    function renderPracticeMenu(catMastery) {
+        const box = document.getElementById('practice-batch-list');
+        box.innerHTML = '';
+        
+        const batchSize = 50;
+        const totalBatches = Math.ceil(catMastery.length / batchSize);
+        
+        let html = `<button class="mode-btn practice-btn" onclick="startPractice('all')" style="width: 100%;">
+            <span class="btn-icon">⚡</span>
+            <span class="btn-label">MIX ALL BATCHES</span>
+            <span class="btn-sub">Random test from ${catMastery.length} words</span>
+        </button>`;
+
+        for(let i=0; i<totalBatches; i++) {
+            const batchWords = catMastery.slice(i * batchSize, (i + 1) * batchSize);
+            const isComplete = batchWords.length === batchSize;
+            
+            // Cleaned up inline colors
+            html += `<button class="mode-btn" onclick="startPractice(${i})" style="width: 100%;">
+                <span class="btn-icon">📁</span>
+                <span class="btn-label">BATCH ${String(i+1).padStart(2, '0')}</span>
+                <span class="btn-sub">${batchWords.length} / ${batchSize} MASTERED</span>
+            </button>`;
+        }
+        box.innerHTML = html;
+    }
+
+    function startPractice(batchIndex) {
+        const catMastery = mastery.filter(m => {
+            if (m.category && currentCategory) {
+                return m.category.toLowerCase().trim() === currentCategory.toLowerCase().trim();
+            }
+            return wordData.some(w => w.word === m.word);
+        });
+        
+        if (batchIndex === 'all') {
+            currentPracticePool = [...catMastery];
+        } else {
+            currentPracticePool = catMastery.slice(batchIndex * 50, (batchIndex + 1) * 50);
+        }
+        
+        showScreen('practice');
+        renderPractice(currentPracticePool);
+    }
+
+    function renderPractice(pool) {
+      const fb = document.getElementById('feedback-box');
+      fb.textContent = ''; fb.className = 'feedback-box';
+
+      const rand = pool[Math.floor(Math.random() * pool.length)];
+      let options = [rand.meaning];
+      const distractorPool = wordData.filter(w => w.meaning !== rand.meaning);
+      distractorPool.sort(() => Math.random() - 0.5);
+      for (let w of distractorPool) {
+        if (options.length >= 4) break;
+        if (!options.includes(w.meaning)) options.push(w.meaning);
+      }
+      options.sort(() => Math.random() - 0.5);
+
+      document.getElementById('practice-word').textContent = rand.word;
+      const grid = document.getElementById('options-grid');
+      grid.innerHTML = '';
+      options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = opt;
+        btn.onclick = () => checkAnswer(btn, opt, rand.meaning, grid, pool);
+        grid.appendChild(btn);
+      });
+    }
+
+    function checkAnswer(btn, selected, correct, grid, pool) {
+      grid.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+      const fb = document.getElementById('feedback-box');
+      if (selected === correct) {
+        btn.classList.add('correct');
+        fb.textContent = '✓ CORRECT — NEURAL LINK CONFIRMED';
+        fb.className = 'feedback-box success';
+        setTimeout(() => renderPractice(pool), 1200);
+      } else {
+        btn.classList.add('wrong');
+        fb.textContent = '✗ INCORRECT — RECALIBRATING...';
+        fb.className = 'feedback-box error';
+        grid.querySelectorAll('.option-btn').forEach(b => { if (b.textContent === correct) b.classList.add('correct'); });
+        setTimeout(() => renderPractice(pool), 1800);
+      }
+    }
+
+    // --- NEW: FOLDER TOGGLE LOGIC ---
+    function toggleBatch(id) {
+        const content = document.getElementById(id);
+        const icon = document.getElementById('icon-' + id);
+        if (content.classList.contains('open')) {
+            content.classList.remove('open');
+            icon.textContent = '▼';
+            icon.style.color = 'var(--grey-medium)';
+        } else {
+            content.classList.add('open');
+            icon.textContent = '▲';
+            icon.style.color = 'var(--silver-light)'; // Light up when open
+        }
+    }
+
+    // --- ARCHIVE FOLDER LOGIC ---
+    function showArchive() {
+      document.getElementById('archive-category-title').textContent = document.getElementById('selected-category-title').textContent + " ARCHIVE";
+      
+      allArchive = mastery.filter(m => {
+          if (m.category && currentCategory) {
+              return m.category.toLowerCase().trim() === currentCategory.toLowerCase().trim();
+          }
+          return wordData.some(w => w.word === m.word);
+      });
+      
+      document.getElementById('archive-count').textContent = allArchive.length + ' items';
+      document.getElementById('archive-search').value = '';
+      renderArchiveBatches(allArchive);
+      showScreen('archive');
+    }
+
+    function filterArchive() {
+      const q = document.getElementById('archive-search').value.toLowerCase();
+      if (q) {
+          const filtered = allArchive.filter(w => w.word.toLowerCase().includes(q) || w.meaning.toLowerCase().includes(q));
+          renderArchiveListFlat(filtered);
+      } else {
+          renderArchiveBatches(allArchive);
+      }
+    }
+
+    function renderArchiveBatches(list) {
+      const box = document.getElementById('archive-list');
+      if (list.length === 0) { box.innerHTML = '<div class="archive-empty">No items found.</div>'; return; }
+      
+      let html = '';
+      const batchSize = 50;
+      const totalBatches = Math.ceil(list.length / batchSize);
+      
+      for(let i=0; i<totalBatches; i++) {
+          const batchWords = list.slice(i * batchSize, (i + 1) * batchSize);
+          const batchId = 'batch-folder-' + i;
+          
+          html += `<div class="batch-folder">
+            <div class="batch-header" onclick="toggleBatch('${batchId}')">
+              <span>📁 BATCH ${String(i+1).padStart(2, '0')}</span>
+              <div class="batch-stats">
+                <span>${batchWords.length}/${batchSize}</span>
+                <span id="icon-${batchId}" style="color: var(--grey-medium); font-size: 0.8rem; width: 15px; text-align: center;">▼</span>
+              </div>
+            </div>
+            <div class="batch-content" id="${batchId}">`;
+          
+          html += batchWords.map(w => {
+            return `<div class="archive-item">
+              <div class="arc-word">${w.word}</div>
+              <div class="arc-meaning">${w.meaning}</div>
+              <button class="remove-btn" onclick="removeFromArchive('${w.id || w.word}')">✕</button>
+            </div>`;
+          }).join('');
+          
+          html += `</div></div>`;
+      }
+      box.innerHTML = html;
+    }
+
+    function renderArchiveListFlat(list) {
+      const box = document.getElementById('archive-list');
+      if (list.length === 0) { box.innerHTML = '<div class="archive-empty">No items found.</div>'; return; }
+      box.innerHTML = list.map(w => {
+        return `<div class="archive-item">
+          <div class="arc-word">${w.word}</div>
+          <div class="arc-meaning">${w.meaning}</div>
+          <button class="remove-btn" onclick="removeFromArchive('${w.id || w.word}')">✕</button>
+        </div>`;
+      }).join('');
+    }
+
+    function removeFromArchive(identifier) {
+      mastery = mastery.filter(m => m.id !== identifier && m.word !== identifier);
+      localStorage.setItem('myMasteryList', JSON.stringify(mastery));
+      updateStats();
+      showArchive();
+    }
+  </script>
+</body>
+</html>
