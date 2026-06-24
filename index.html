@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Black:- Vocabulary builder</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="scanlines"></div>
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <div class="hud-header">
+    <span class="logo" onclick="goRoot()">◈ THE BLACK</span>
+    <div class="stat-bar">
+      <span class="stat-item">MASTERED <span class="stat-val" id="mastered-count">0</span></span>
+      <span class="divider">|</span>
+      <span class="stat-item">TOTAL <span class="stat-val" id="total-count">0</span></span>
+      <span class="divider">|</span>
+      <span class="stat-item">LEFT <span class="stat-val" id="left-count">0</span></span>
+    </div>
+  </div>
+
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+
+  <div class="hud-card" id="main-ui">
+
+    <div id="screen-category" class="screen active">
+      <div>
+        <div class="ghost-eye">◈</div>
+        <h1 class="main-title">THE <span>BLACK</span></h1>
+        <div class="subtitle" style="text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);">VOCABULARY BUILDER</div>
+        <p class="subtitle" id="db-status" style="font-size: 0.55rem; opacity: 0.7;">ESTABLISHING UPLINK...</p>
+      </div>
+      <div class="menu-grid">
+        <button class="mode-btn" onclick="selectCategory('ows')">
+          <span class="btn-icon">❖</span><span class="btn-label">ONE WORD SUB.</span><span class="btn-sub">Phrases to single words</span>
+        </button>
+        <button class="mode-btn practice-btn" onclick="selectCategory('idiom')">
+          <span class="btn-icon">✧</span><span class="btn-label">IDIOMS & PHRASES</span><span class="btn-sub">Figurative expressions</span>
+        </button>
+        <button class="mode-btn archive-btn" onclick="selectCategory('vocab')">
+          <span class="btn-icon">⟐</span><span class="btn-label">GENERAL VOCAB</span><span class="btn-sub">Essential words with clean meanings</span>
+        </button>
+        <button class="mode-btn" onclick="selectCategory('spelling')">
+          <span class="btn-icon">⎔</span><span class="btn-label">SPELLING TEST</span><span class="btn-sub">Check spelling accuracy</span>
+        </button>
+        <button class="mode-btn" onclick="window.location.href='pyq.html'">
+          <span class="btn-icon">⍟</span><span class="btn-label">PYQ VAULT</span><span class="btn-sub">Year-wise previous questions</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="screen-home" class="screen">
+      <div>
+        <div class="ghost-eye pulse">◈</div>
+        <h2 class="main-title" id="selected-category-title" style="font-size: 1.8rem; letter-spacing: 3px;">CATEGORY</h2>
+        <p class="subtitle">SELECT DIRECTIVE</p>
+      </div>
+      <div class="menu-grid">
+        <button class="mode-btn learn-btn" onclick="setMode('learn')">
+          <span class="btn-icon">▶</span><span class="btn-label">LEARN</span><span class="btn-sub">Memorize entries</span>
+        </button>
+        <button class="mode-btn practice-btn" onclick="setMode('practice')">
+          <span class="btn-icon">⬡</span><span class="btn-label">PRACTICE</span><span class="btn-sub">Test knowledge</span>
+        </button>
+        <button class="mode-btn archive-btn" onclick="showArchive()">
+          <span class="btn-icon">◈</span><span class="btn-label">ARCHIVE</span><span class="btn-sub">Mastered items</span>
+        </button>
+      </div>
+      <button class="home-btn" onclick="goRoot()">⌂ BACK TO CATEGORIES</button>
+    </div>
+
+    <!-- NEW SCREEN: BATCH MENU FOR LEARNING -->
+    <div id="screen-learn-menu" class="screen">
+      <div>
+        <div class="ghost-eye pulse">◈</div>
+        <h2 class="main-title" style="font-size: 1.5rem;">SELECT BATCH</h2>
+        <p class="subtitle">CHOOSE NEURAL BATCH FOR LEARNING</p>
+      </div>
+      <div class="scroll-box menu-grid" id="learn-batch-list" style="margin-top: 15px; margin-bottom: 15px;"></div>
+      <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
+    </div>
+
+    <div id="screen-learn" class="screen">
+      <div style="text-align: center;">
+        <div class="ghost-eye pulse" style="font-size: 0.8rem; display: inline-block;">◈</div>
+        <div id="learn-category-title" style="color: var(--silver-light); font-family: 'Orbitron', sans-serif; font-size: 1.1rem; letter-spacing: 3px; margin-top: 5px;">CATEGORY</div>
+      </div>
+      <div class="card-counter" id="card-counter">01 / 00</div>
+      <div class="word-card">
+        <div class="word-label">ENTRY</div>
+        <div class="word-text" id="learn-word">—</div>
+        <div class="divider-line"></div>
+        <div class="meaning-label">MEANING / DEFINITION</div>
+        <div class="meaning-text" id="learn-meaning">—</div>
+      </div>
+      <div>
+        <div class="action-row">
+          <button class="ctrl-btn" onclick="nav(-1)" title="Previous">◀</button>
+          <button class="memorized-btn" onclick="markLearned()">✓ MEMORIZED</button>
+          <button class="ctrl-btn" onclick="nav(1)" title="Next">▶</button>
+        </div>
+        <button class="home-btn" onclick="showScreen('learn-menu')">⌂ BATCH MENU</button>
+      </div>
+    </div>
+
+    <div id="screen-practice-menu" class="screen">
+      <div>
+        <div class="ghost-eye pulse">◈</div>
+        <h2 class="main-title" style="font-size: 1.5rem;">SELECT TARGET</h2>
+        <p class="subtitle">CHOOSE NEURAL BATCH FOR REVISION</p>
+      </div>
+      <div class="scroll-box menu-grid" id="practice-batch-list" style="margin-top: 15px; margin-bottom: 15px;"></div>
+      <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
+    </div>
+
+    <div id="screen-practice" class="screen">
+      <div class="card-counter" id="practice-counter" style="margin-top: -5px; margin-bottom: 10px; align-self: flex-end;">01 / 00</div>
+      <div class="practice-word-box">
+        <div class="word-label">IDENTIFY THIS ENTRY</div>
+        <div class="word-text" id="practice-word">—</div>
+      </div>
+      <div class="options-grid" id="options-grid"></div>
+      <div class="feedback-box" id="feedback-box"></div>
+      <button class="home-btn" onclick="showScreen('practice-menu')">⌂ ABORT TEST</button>
+    </div>
+
+    <div id="screen-result" class="screen">
+      <div style="text-align: center;">
+        <div class="ghost-eye">◈</div>
+        <h2 class="main-title" style="font-size: 1.8rem; letter-spacing: 3px;">TEST COMPLETE</h2>
+        <div class="subtitle" id="result-score" style="font-size: 1.1rem; color: var(--silver-light); margin-top: 10px;">SCORE: 0 / 0</div>
+      </div>
+      
+      <div class="word-label" style="margin-top: 15px;" id="wrong-words-title">NEURAL MISMATCHES (WRONG)</div>
+      <div class="scroll-box" id="result-wrong-list" style="flex: 1; margin-bottom: 15px;"></div>
+      
+      <div class="menu-grid" style="margin-top: auto;">
+        <button class="mode-btn practice-btn" onclick="retryWrongWords()" id="retry-btn">
+          <span class="btn-icon">⚡</span><span class="btn-label">RETRY FAILED</span>
+        </button>
+        <button class="home-btn" onclick="showScreen('home')" style="margin-top: 0;">⌂ ACTION MENU</button>
+      </div>
+    </div>
+
+    <div id="screen-archive" class="screen">
+      <div>
+        <div class="archive-header">
+          <span class="word-label" id="archive-category-title" style="color: var(--silver-light);">MASTERED ARCHIVE</span>
+          <span class="archive-count" id="archive-count">0 items</span>
+        </div>
+        <div class="archive-search-wrap">
+          <input type="text" id="archive-search" class="archive-search" placeholder="SEARCH..." oninput="filterArchive()">
+        </div>
+      </div>
+      <div class="scroll-box" id="archive-list" style="margin-top: 15px;"></div>
+      <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
+    </div>
+
+    <div id="screen-all-done" class="screen">
+      <div style="margin: auto 0;">
+        <div class="ghost-eye pulse">◈</div>
+        <div class="word-text" style="color: var(--success); margin:20px 0; text-align: center;">BATCH MASTERED</div>
+        <p class="subtitle">Target completed. Return to menu.</p>
+        <button class="mode-btn learn-btn" onclick="showScreen('learn-menu')" style="margin-bottom:10px; width: 100%;">
+          <span class="btn-icon">▶</span><span class="btn-label">NEXT BATCH</span>
+        </button>
+      </div>
+      <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
+    </div>
+
+    <div id="screen-empty" class="screen">
+      <div style="margin: auto 0;">
+        <div class="ghost-eye">◈</div>
+        <div class="word-text" style="color: var(--error); margin:20px 0; text-align: center;">NO DATA</div>
+        <p class="subtitle">Learn entries in this category first.</p>
+        <button class="mode-btn learn-btn" onclick="setMode('learn')" style="margin-bottom:10px; width: 100%;">
+          <span class="btn-icon">▶</span><span class="btn-label">START LEARNING</span>
+        </button>
+      </div>
+      <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
