@@ -1,6 +1,6 @@
 /* =========================================
    THE BLACK — MULTI-TABLE ENGINE
-   Handles Separate Tables & 50-Word Batches
+   Handles Separate Tables, Batches & Pagination
    ========================================= */
 
 const supabaseUrl = 'https://hbdcavwjbnkyghupsaxo.supabase.co';
@@ -54,7 +54,7 @@ function goRoot() {
   showScreen('category'); 
 }
 
-// --- DYNAMIC TABLE FETCHING ---
+// --- DYNAMIC TABLE FETCHING (WITH AUTO-PAGINATION) ---
 async function selectCategory(type) {
   let tableName = 'words'; 
   let titleDisplay = type.toUpperCase();
@@ -68,14 +68,31 @@ async function selectCategory(type) {
   showScreen('home'); // Show home screen immediately while fetching
 
   try {
-    const { data, error } = await sbClient
-        .from(tableName)
-        .select('*')
-        .order('created_at', { ascending: true }); // Locks batches based on upload time
-        
-    if (error) throw error;
+    let allData = [];
+    let fetchLimit = 1000;
+    let start = 0;
+    let keepFetching = true;
+
+    // Loop until we get all the data (bypasses Supabase 1000 limit)
+    while (keepFetching) {
+      const { data, error } = await sbClient
+          .from(tableName)
+          .select('*')
+          .order('created_at', { ascending: true })
+          .range(start, start + fetchLimit - 1); 
+          
+      if (error) throw error;
+      
+      allData = allData.concat(data); 
+      
+      if (data.length < fetchLimit) {
+        keepFetching = false;
+      } else {
+        start += fetchLimit; 
+      }
+    }
     
-    wordData = data || [];
+    wordData = allData || [];
     currentCategory = type; 
 
     document.getElementById('selected-category-title').textContent = titleDisplay;
