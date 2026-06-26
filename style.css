@@ -1,6 +1,7 @@
 /* ============================
    THE BLACK — VOCAB SYSTEM
    Monochromatic Stealth Theme
+   With Flash Feedback System
    ============================ */
 
 :root {
@@ -21,17 +22,32 @@
   --font-body: 'Rajdhani', sans-serif;
 }
 
+/* --- NEW: Feedback Flash Animations --- */
+.flash-correct { animation: flashGreen 1s ease-out; }
+.flash-wrong { animation: flashRed 1s ease-out; }
+
+@keyframes flashGreen {
+    0% { background-color: #000; }
+    20% { background-color: #00FF00; } /* Neon Green */
+    100% { background-color: #000; }
+}
+
+@keyframes flashRed {
+    0% { background-color: #000; }
+    20% { background-color: #FF0000; } /* Red */
+    100% { background-color: #000; }
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  /* FIX: Natural scroll enabled */
   min-height: 100dvh; 
   background: var(--bg);
   background-image: var(--bg-gradient);
   color: var(--silver);
   font-family: var(--font-body);
   overflow-x: hidden;
-  overflow-y: auto; /* Enables scrolling naturally */
+  overflow-y: auto;
 }
 
 /* ---- Minimal Background Elements ---- */
@@ -82,7 +98,6 @@ body::before {
   position: relative; z-index: 10;
   width: 90%; max-width: 450px;
   margin: 60px auto 0;
-  /* FIX: Allowed minimum height to stretch content safely, adding padding at bottom to clear browser menus */
   min-height: calc(100dvh - 60px);
   display: flex; flex-direction: column;
   padding: 0 0 50px 0;

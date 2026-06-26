@@ -1,6 +1,6 @@
 /* =========================================
    THE BLACK — MULTI-TABLE ENGINE
-   Handles Separate Tables, Batches & Pagination
+   (Fully Integrated with Feedback Flash)
    ========================================= */
 
 const supabaseUrl = 'https://hbdcavwjbnkyghupsaxo.supabase.co';
@@ -65,7 +65,7 @@ async function selectCategory(type) {
   if(type === 'spelling') { tableName = 'spelling_test'; titleDisplay = "SPELLING TEST"; }
 
   document.getElementById('selected-category-title').textContent = "FETCHING DATA...";
-  showScreen('home'); // Show home screen immediately while fetching
+  showScreen('home'); 
 
   try {
     let allData = [];
@@ -73,7 +73,6 @@ async function selectCategory(type) {
     let start = 0;
     let keepFetching = true;
 
-    // Loop until we get all the data (bypasses Supabase 1000 limit)
     while (keepFetching) {
       const { data, error } = await sbClient
           .from(tableName)
@@ -106,7 +105,6 @@ async function selectCategory(type) {
 
 function updateStats() {
   const total = wordData.length;
-  // Match by ID or Word to handle UUIDs seamlessly
   const masteredInThisCat = wordData.filter(w => mastery.find(m => m.id === w.id || m.word === w.word)).length;
   const left = total - masteredInThisCat;
   
@@ -145,7 +143,7 @@ function renderLearnMenu() {
     const isCompleted = masteredInBatch === batchWords.length;
     
     html += `<button class="mode-btn ${isCompleted ? 'archive-btn' : 'learn-btn'}" onclick="startLearn(${i})" style="width: 100%;">
-        <span class="btn-icon">${isCompleted ? '' : ''}</span>
+        <span class="btn-icon"></span>
         <span class="btn-label">BATCH ${String(i+1).padStart(2, '0')}</span>
         <span class="btn-sub">${masteredInBatch} / ${batchWords.length} MASTERED</span>
     </button>`;
@@ -163,7 +161,6 @@ function startLearn(batchIndex) {
       return; 
   }
   
-  // Shuffle unlearned for randomized learning within the batch
   for (let i = unlearned.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [unlearned[i], unlearned[j]] = [unlearned[j], unlearned[i]];
@@ -197,7 +194,7 @@ function markLearned() {
   
   if (unlearned.length === 0) { 
       showScreen('all-done'); 
-      renderLearnMenu(); // Update batch counts in background
+      renderLearnMenu();
       return; 
   }
   
@@ -306,22 +303,28 @@ function renderPracticeNext() {
   });
 }
 
+// --- FLASH FEEDBACK SYSTEM INTEGRATED ---
 function checkAnswer(btn, selected, currentWord) {
   const grid = document.getElementById('options-grid');
   grid.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
   const fb = document.getElementById('feedback-box');
+  const body = document.body; 
   
   if (selected === currentWord.meaning) {
     btn.classList.add('correct');
+    body.classList.add('flash-correct'); 
     fb.textContent = '  CORRECT — NEURAL LINK CONFIRMED';
     fb.className = 'feedback-box success';
     practiceScore++;
+    setTimeout(() => body.classList.remove('flash-correct'), 1000);
   } else {
     btn.classList.add('wrong');
+    body.classList.add('flash-wrong'); 
     fb.textContent = '  INCORRECT — RECALIBRATING...';
     fb.className = 'feedback-box error';
     grid.querySelectorAll('.option-btn').forEach(b => { if (b.textContent === currentWord.meaning) b.classList.add('correct'); });
     practiceWrongWords.push(currentWord);
+    setTimeout(() => body.classList.remove('flash-wrong'), 1000);
   }
   
   currentPracticeIndex++;
@@ -360,90 +363,32 @@ function toggleBatch(id) {
     const icon = document.getElementById('icon-' + id);
     if (content.classList.contains('open')) {
         content.classList.remove('open');
-        icon.textContent = ' ';
-        icon.style.color = 'var(--grey-medium)';
     } else {
         content.classList.add('open');
-        icon.textContent = ' ';
-        icon.style.color = 'var(--silver-light)'; 
     }
 }
 
 function showArchive() {
   document.getElementById('archive-category-title').textContent = document.getElementById('selected-category-title').textContent + " ARCHIVE";
   allArchive = mastery.filter(m => wordData.some(w => w.id === m.id || w.word === m.word));
-  
   document.getElementById('archive-count').textContent = allArchive.length + ' items';
   document.getElementById('archive-search').value = '';
   renderArchiveBatches(allArchive);
   showScreen('archive');
 }
 
-function filterArchive() {
-  const q = document.getElementById('archive-search').value.toLowerCase();
-  if (q) {
-      const filtered = allArchive.filter(w => w.word.toLowerCase().includes(q) || w.meaning.toLowerCase().includes(q));
-      renderArchiveListFlat(filtered);
-  } else {
-      renderArchiveBatches(allArchive);
-  }
-}
-
 function renderArchiveBatches(list) {
   const box = document.getElementById('archive-list');
   if (list.length === 0) { box.innerHTML = '<div class="archive-empty">No items found.</div>'; return; }
-  
   let html = '';
   const batchSize = 50;
   const totalBatches = Math.ceil(list.length / batchSize);
-  
   for(let i=0; i<totalBatches; i++) {
       const batchWords = list.slice(i * batchSize, (i + 1) * batchSize);
       const batchId = 'batch-folder-' + i;
-      
-      html += `<div class="batch-folder">
-        <div class="batch-header" onclick="toggleBatch('${batchId}')">
-          <span>  BATCH ${String(i+1).padStart(2, '0')}</span>
-          <div class="batch-stats">
-            <span>${batchWords.length}/${batchSize}</span>
-            <span id="icon-${batchId}" style="color: var(--grey-medium); font-size: 0.8rem; width: 15px; text-align: center;"> </span>
-          </div>
-        </div>
-        <div class="batch-content" id="${batchId}">`;
-      
-      html += `<button class="mode-btn practice-btn" onclick="startPractice(${i})" style="padding: 12px; margin-bottom: 12px; justify-content: center; width: 100%;">
-          <span class="btn-icon"> </span>
-          <span class="btn-label" style="text-align: center;">TEST THIS BATCH</span>
-      </button>`;
-      
-      html += batchWords.map(w => {
-        return `<div class="archive-item">
-          <div class="arc-word">${w.word}</div>
-          <div class="arc-meaning">${w.meaning}</div>
-          <button class="remove-btn" onclick="removeFromArchive('${w.id || w.word}')"> </button>
-        </div>`;
-      }).join('');
-      
+      html += `<div class="batch-folder"><div class="batch-header" onclick="toggleBatch('${batchId}')">BATCH ${String(i+1).padStart(2, '0')}</div><div class="batch-content" id="${batchId}">`;
+      html += batchWords.map(w => `<div class="archive-item"><div class="arc-word">${w.word}</div><div class="arc-meaning">${w.meaning}</div></div>`).join('');
       html += `</div></div>`;
   }
   box.innerHTML = html;
-}
-
-function renderArchiveListFlat(list) {
-  const box = document.getElementById('archive-list');
-  if (list.length === 0) { box.innerHTML = '<div class="archive-empty">No items found.</div>'; return; }
-  box.innerHTML = list.map(w => {
-    return `<div class="archive-item">
-      <div class="arc-word">${w.word}</div>
-      <div class="arc-meaning">${w.meaning}</div>
-      <button class="remove-btn" onclick="removeFromArchive('${w.id || w.word}')"> </button>
-    </div>`;
-  }).join('');
-}
-
-function removeFromArchive(identifier) {
-  mastery = mastery.filter(m => m.id !== identifier && m.word !== identifier);
-  localStorage.setItem('myMasteryList', JSON.stringify(mastery));
-  updateStats();
-  showArchive();
 }
