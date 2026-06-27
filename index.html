@@ -55,6 +55,10 @@
         <button class="mode-btn" onclick="window.location.href='pyq.html'">
           <span class="btn-icon">⍟</span><span class="btn-label">PYQ VAULT</span><span class="btn-sub">Year-wise previous questions</span>
         </button>
+        <!-- SYNC BUTTON ADDED HERE -->
+        <button class="mode-btn" onclick="openSyncModal()" style="border-color: var(--accent-muted);">
+          <span class="btn-icon">☁</span><span class="btn-label">SYNC CLOUD</span><span class="btn-sub">Backup progress to cloud</span>
+        </button>
       </div>
     </div>
 
@@ -189,6 +193,26 @@
       <button class="home-btn" onclick="showScreen('home')">⌂ ACTION MENU</button>
     </div>
 
+  </div>
+
+  <!-- MIGRATION / SYNC MODAL -->
+  <div id="sync-modal" class="sync-modal" style="display: none;">
+    <div class="sync-card">
+      <div class="sync-header">
+        <span style="font-family: var(--font-hud); letter-spacing: 2px;">NEURAL SYNC</span>
+        <button onclick="closeSyncModal()" class="remove-btn">✖</button>
+      </div>
+      <div class="sync-body">
+        <p style="font-size: 0.75rem; color: var(--grey-medium); margin-bottom: 15px; font-family: var(--font-mono);">
+          Enter phone & password to backup your local mastery data to the cloud.
+        </p>
+        <input type="text" id="sync-phone" placeholder="Phone Number (e.g. 9999999999)" class="archive-search" style="margin-bottom: 10px;">
+        <input type="password" id="sync-pass" placeholder="Password (Min 6 chars)" class="archive-search" style="margin-bottom: 15px;">
+        
+        <button onclick="handleSyncAuth()" class="memorized-btn" style="width: 100%; text-align: center;">INITIATE SYNC</button>
+        <div id="sync-status" style="margin-top: 10px; font-size: 0.7rem; color: var(--success); text-align: center; font-family: var(--font-mono);"></div>
+      </div>
+    </div>
   </div>
 
   <script src="script.js"></script>

@@ -1,7 +1,7 @@
 /* ============================
    THE BLACK — VOCAB SYSTEM
    Monochromatic Stealth Theme
-   With Flash Feedback System
+   With Flash Feedback System & Sync Modal
    ============================ */
 
 :root {
@@ -193,6 +193,24 @@ body::before {
 .remove-btn { background: none; border: none; color: var(--grey-dark); font-size: 0.9rem; cursor: pointer; padding: 2px 6px; transition: color 0.3s; flex-shrink: 0; }
 .remove-btn:hover { color: var(--silver-light); }
 .archive-empty { font-family: var(--font-mono); font-size: 0.75rem; color: var(--grey-medium); text-align: center; padding: 30px; letter-spacing: 3px; }
+
+/* --- SYNC MODAL STYLES --- */
+.sync-modal {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 100; display: flex; justify-content: center; align-items: center;
+}
+.sync-card {
+  width: 85%; max-width: 320px; padding: 20px;
+  background: var(--card-bg); border: 1px solid var(--grey-border);
+  border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+}
+.sync-header {
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid var(--grey-dark); padding-bottom: 10px; margin-bottom: 15px;
+  color: var(--silver-light);
+}
 
 @media (max-height: 600px) {
   .main-title { font-size: 1.8rem; }

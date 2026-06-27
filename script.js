@@ -1,6 +1,6 @@
 /* =========================================
    THE BLACK — MULTI-TABLE ENGINE
-   (Fully Integrated with Feedback Flash)
+   (Fully Integrated with Feedback Flash & Sync)
    ========================================= */
 
 const supabaseUrl = 'https://hbdcavwjbnkyghupsaxo.supabase.co';
@@ -391,4 +391,90 @@ function renderArchiveBatches(list) {
       html += `</div></div>`;
   }
   box.innerHTML = html;
+}
+
+/* =========================================
+   GUEST-TO-CLOUD MIGRATION SYSTEM
+   ========================================= */
+
+function openSyncModal() {
+  document.getElementById('sync-modal').style.display = 'flex';
+  document.getElementById('sync-status').textContent = '';
+}
+
+function closeSyncModal() {
+  document.getElementById('sync-modal').style.display = 'none';
+}
+
+async function handleSyncAuth() {
+  const phoneInput = document.getElementById('sync-phone').value.trim();
+  const passInput = document.getElementById('sync-pass').value.trim();
+  const statusBox = document.getElementById('sync-status');
+
+  if (!phoneInput || !passInput) {
+    statusBox.style.color = "var(--error)";
+    statusBox.textContent = "ENTER PHONE AND PASSWORD";
+    return;
+  }
+
+  // Formatting country code
+  const formattedPhone = phoneInput.startsWith('+91') ? phoneInput : '+91' + phoneInput;
+  statusBox.style.color = "var(--grey-medium)";
+  statusBox.textContent = "AUTHENTICATING...";
+
+  // Attempt login
+  let { data, error } = await sbClient.auth.signInWithPassword({
+    phone: formattedPhone,
+    password: passInput
+  });
+
+  // Fallback to sign up if credentials are invalid/user missing
+  if (error && error.message.includes('Invalid login credentials')) {
+    statusBox.textContent = "CREATING NEW NEURAL PROFILE...";
+    const signUpResponse = await sbClient.auth.signUp({
+      phone: formattedPhone,
+      password: passInput
+    });
+    data = signUpResponse.data;
+    error = signUpResponse.error;
+  }
+
+  if (error) {
+    statusBox.style.color = "var(--error)";
+    statusBox.textContent = "ERROR: " + error.message.toUpperCase();
+    return;
+  }
+
+  // Auth successful, start sync
+  if (data.user) {
+    statusBox.textContent = "ACCESS GRANTED. UPLOADING DATA...";
+    await syncGuestDataToCloud(data.user.id, statusBox);
+  }
+}
+
+async function syncGuestDataToCloud(userId, statusBox) {
+  const localData = JSON.parse(localStorage.getItem('myMasteryList')) || [];
+  
+  if (localData.length === 0) {
+    statusBox.style.color = "var(--success)";
+    statusBox.textContent = "NO LOCAL DATA TO SYNC. READY.";
+    setTimeout(closeSyncModal, 2000);
+    return;
+  }
+
+  const insertPayload = localData.map(item => ({
+    user_id: userId,
+    word_id: item.word 
+  }));
+
+  const { error } = await sbClient.from('user_mastery').upsert(insertPayload);
+      
+  if (!error) {
+    statusBox.style.color = "var(--success)";
+    statusBox.textContent = "SYNC COMPLETE. DATA SECURED.";
+    setTimeout(closeSyncModal, 2000);
+  } else {
+    statusBox.style.color = "var(--error)";
+    statusBox.textContent = "SYNC FAILED: " + error.message;
+  }
 }
