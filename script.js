@@ -462,10 +462,16 @@ async function syncGuestDataToCloud(userId, statusBox) {
     return;
   }
 
-  const insertPayload = localData.map(item => ({
-    user_id: userId,
-    word_id: item.word 
-  }));
+  // NAYA LOGIC: Duplicates ko remove karna (Deduplication)
+  const uniqueDataMap = new Map();
+  localData.forEach(item => {
+    if (item && item.word) {
+      uniqueDataMap.set(item.word, { user_id: userId, word_id: item.word });
+    }
+  });
+  
+  // Cleaned array ready for database
+  const insertPayload = Array.from(uniqueDataMap.values());
 
   const { error } = await sbClient.from('user_mastery').upsert(insertPayload);
       
