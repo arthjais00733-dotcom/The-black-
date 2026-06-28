@@ -417,18 +417,15 @@ async function handleSyncAuth() {
     return;
   }
 
-  // Formatting country code
   const formattedPhone = phoneInput.startsWith('+91') ? phoneInput : '+91' + phoneInput;
   statusBox.style.color = "var(--grey-medium)";
   statusBox.textContent = "AUTHENTICATING...";
 
-  // Attempt login
   let { data, error } = await sbClient.auth.signInWithPassword({
     phone: formattedPhone,
     password: passInput
   });
 
-  // Fallback to sign up if credentials are invalid/user missing
   if (error && error.message.includes('Invalid login credentials')) {
     statusBox.textContent = "CREATING NEW NEURAL PROFILE...";
     const signUpResponse = await sbClient.auth.signUp({
@@ -445,9 +442,8 @@ async function handleSyncAuth() {
     return;
   }
 
-  // Auth successful, start sync
   if (data.user) {
-    statusBox.textContent = "ACCESS GRANTED. UPLOADING DATA...";
+    statusBox.textContent = "ACCESS GRANTED. CLEANING DATA...";
     await syncGuestDataToCloud(data.user.id, statusBox);
   }
 }
@@ -462,18 +458,25 @@ async function syncGuestDataToCloud(userId, statusBox) {
     return;
   }
 
-  // NAYA LOGIC: Duplicates ko remove karna (Deduplication)
+  statusBox.textContent = "EXTRACTING NEURAL DATA...";
+
+  // EXTREME DEDUPLICATION - Bulletproof cleaning
   const uniqueDataMap = new Map();
   localData.forEach(item => {
     if (item && item.word) {
-      uniqueDataMap.set(item.word, { user_id: userId, word_id: item.word });
+      const cleanWord = item.word.trim(); // Extra space hata rahe hain
+      uniqueDataMap.set(cleanWord, { user_id: userId, word_id: cleanWord });
     }
   });
   
-  // Cleaned array ready for database
   const insertPayload = Array.from(uniqueDataMap.values());
+  statusBox.textContent = "UPLOADING TO CLOUD...";
 
-  const { error } = await sbClient.from('user_mastery').upsert(insertPayload);
+  // NEW BULLETPROOF COMMAND
+  const { error } = await sbClient.from('user_mastery').upsert(
+      insertPayload, 
+      { ignoreDuplicates: true } // Ye guarantee dega ki duplicate pr error nahi aayega
+  );
       
   if (!error) {
     statusBox.style.color = "var(--success)";
