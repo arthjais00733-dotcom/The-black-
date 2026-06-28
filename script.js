@@ -1,6 +1,6 @@
 /* =========================================
    THE BLACK — MULTI-TABLE ENGINE
-   (Fully Integrated with Feedback Flash & Sync)
+   (Fully Integrated with Feedback Flash & Two-Way Sync)
    ========================================= */
 
 const supabaseUrl = 'https://hbdcavwjbnkyghupsaxo.supabase.co';
@@ -24,6 +24,7 @@ function initDatabase() {
   const dbStatus = document.getElementById('db-status');
   dbStatus.textContent = "SYSTEM READY";
   dbStatus.style.color = "rgba(255, 255, 255, 0.4)";
+  checkUserSession(); // App load hote hi session check karega
 }
 initDatabase();
 
@@ -189,6 +190,14 @@ function markLearned() {
   const word = unlearned[currentIndex];
   if (!mastery.find(m => m.id === word.id || m.word === word.word)) mastery.push(word);
   localStorage.setItem('myMasteryList', JSON.stringify(mastery));
+  
+  // Agar user logged in hai, toh real-time cloud mein push karo
+  sbClient.auth.getSession().then(({ data: { session } }) => {
+    if (session) {
+      sbClient.from('user_mastery').upsert([{ user_id: session.user.id, word_id: word.word }]).then();
+    }
+  });
+
   unlearned.splice(currentIndex, 1);
   updateStats();
   
@@ -303,7 +312,6 @@ function renderPracticeNext() {
   });
 }
 
-// --- FLASH FEEDBACK SYSTEM INTEGRATED ---
 function checkAnswer(btn, selected, currentWord) {
   const grid = document.getElementById('options-grid');
   grid.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
@@ -394,9 +402,44 @@ function renderArchiveBatches(list) {
 }
 
 /* =========================================
-   GUEST-TO-CLOUD MIGRATION SYSTEM
+   AUTHENTICATION & TWO-WAY SYNC SYSTEM
    ========================================= */
 
+// 1. Session Check & UI Update
+async function checkUserSession() {
+  const { data: { session } } = await sbClient.auth.getSession();
+  const syncBtn = document.getElementById('main-sync-btn');
+  
+  if (session) {
+    if (syncBtn) {
+      syncBtn.innerHTML = '<span class="btn-icon"></span><span class="btn-label">LINK ACTIVE</span><span class="btn-sub">Click to Disconnect (Logout)</span>';
+      syncBtn.onclick = logoutUser;
+      syncBtn.style.borderColor = "var(--success)";
+    }
+    // Background mein PC par naya data pull kar lo
+    await pullDataFromCloud(session.user.id);
+  } else {
+    if (syncBtn) {
+      syncBtn.innerHTML = '<span class="btn-icon"></span><span class="btn-label">SYNC CLOUD</span><span class="btn-sub">Login to Backup/Restore</span>';
+      syncBtn.onclick = openSyncModal;
+      syncBtn.style.borderColor = "var(--accent-muted)";
+    }
+  }
+}
+
+// 2. Logout Flow
+async function logoutUser() {
+  const confirmLogout = confirm("Disconnect Neural Link? This will wipe local data for security.");
+  if (!confirmLogout) return;
+
+  await sbClient.auth.signOut();
+  localStorage.removeItem('myMasteryList'); // PC/Phone se data hata do security ke liye
+  mastery = [];
+  updateStats();
+  checkUserSession(); // UI Reset
+}
+
+// 3. Modal Controls
 function openSyncModal() {
   document.getElementById('sync-modal').style.display = 'flex';
   document.getElementById('sync-status').textContent = '';
@@ -406,6 +449,7 @@ function closeSyncModal() {
   document.getElementById('sync-modal').style.display = 'none';
 }
 
+// 4. Login/Signup Flow
 async function handleSyncAuth() {
   const phoneInput = document.getElementById('sync-phone').value.trim();
   const passInput = document.getElementById('sync-pass').value.trim();
@@ -443,47 +487,59 @@ async function handleSyncAuth() {
   }
 
   if (data.user) {
-    statusBox.textContent = "ACCESS GRANTED. CLEANING DATA...";
-    await syncGuestDataToCloud(data.user.id, statusBox);
+    statusBox.textContent = "ACCESS GRANTED. SYNCING DATA...";
+    // Pehle local data cloud mein push karo
+    await syncGuestDataToCloud(data.user.id);
+    // Fir cloud se saara data wapas pull (restore) karo (For new PC logic)
+    await pullDataFromCloud(data.user.id);
+    
+    statusBox.style.color = "var(--success)";
+    statusBox.textContent = "SYNC COMPLETE. DATA SECURED.";
+    
+    setTimeout(() => {
+      closeSyncModal();
+      checkUserSession(); // Button ko "ACTIVE" state mein badal dega
+    }, 1500);
   }
 }
 
-async function syncGuestDataToCloud(userId, statusBox) {
+// 5. PUSH: Local to Cloud
+async function syncGuestDataToCloud(userId) {
   const localData = JSON.parse(localStorage.getItem('myMasteryList')) || [];
-  
-  if (localData.length === 0) {
-    statusBox.style.color = "var(--success)";
-    statusBox.textContent = "NO LOCAL DATA TO SYNC. READY.";
-    setTimeout(closeSyncModal, 2000);
-    return;
-  }
+  if (localData.length === 0) return;
 
-  statusBox.textContent = "EXTRACTING NEURAL DATA...";
-
-  // EXTREME DEDUPLICATION - Bulletproof cleaning
   const uniqueDataMap = new Map();
   localData.forEach(item => {
     if (item && item.word) {
-      const cleanWord = item.word.trim(); // Extra space hata rahe hain
+      const cleanWord = item.word.trim();
       uniqueDataMap.set(cleanWord, { user_id: userId, word_id: cleanWord });
     }
   });
   
   const insertPayload = Array.from(uniqueDataMap.values());
-  statusBox.textContent = "UPLOADING TO CLOUD...";
+  await sbClient.from('user_mastery').upsert(insertPayload, { ignoreDuplicates: true });
+}
 
-  // NEW BULLETPROOF COMMAND
-  const { error } = await sbClient.from('user_mastery').upsert(
-      insertPayload, 
-      { ignoreDuplicates: true } // Ye guarantee dega ki duplicate pr error nahi aayega
-  );
-      
-  if (!error) {
-    statusBox.style.color = "var(--success)";
-    statusBox.textContent = "SYNC COMPLETE. DATA SECURED.";
-    setTimeout(closeSyncModal, 2000);
-  } else {
-    statusBox.style.color = "var(--error)";
-    statusBox.textContent = "SYNC FAILED: " + error.message;
+// 6. PULL: Cloud to Local (Cross-Device Restore)
+async function pullDataFromCloud(userId) {
+  const { data, error } = await sbClient.from('user_mastery').select('word_id').eq('user_id', userId);
+  
+  if (data && data.length > 0) {
+    let localData = JSON.parse(localStorage.getItem('myMasteryList')) || [];
+    let isUpdated = false;
+    
+    data.forEach(cloudItem => {
+      const exists = localData.find(m => m.word === cloudItem.word_id);
+      if (!exists) {
+        localData.push({ word: cloudItem.word_id });
+        isUpdated = true;
+      }
+    });
+
+    if (isUpdated) {
+      localStorage.setItem('myMasteryList', JSON.stringify(localData));
+      mastery = localData; // Memory array update
+      updateStats(); // UI Update
+    }
   }
 }
